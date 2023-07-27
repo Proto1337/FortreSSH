@@ -1,17 +1,20 @@
-# Use the official golang image as a base
-FROM golang
+# This Dockerfile uses two stages.
+# The first stage builds the binary.
+# The second stage executes the binary on port 2222.
 
-# Upload the tarpit to the image
-ADD . /go/
+# Stage 1: Building
+FROM golang:alpine as builder
+WORKDIR /pit
+ADD fortressh.go .
+RUN go build fortressh.go
 
-# Compile and install
-RUN go build /go/ssh_tarpit.go && useradd -m tarpit && chown -R tarpit /go
-
-# Run the command as tarpit
-USER tarpit
-
-# Image should run the tarpit
-ENTRYPOINT /go/ssh_tarpit
-
-# We bind to 2222
-EXPOSE 2222
+# Stage 2: Running
+FROM alpine:latest
+WORKDIR /pit
+RUN passwd -l root
+# Always use an unpriviliged user for your Docker stuff!
+RUN adduser -D appuser
+USER appuser
+COPY --from=builder --chown=appuser:appuser /pit/fortressh /pit
+EXPOSE 2222/tcp
+ENTRYPOINT ["/pit/fortressh"]

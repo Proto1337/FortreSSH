@@ -10,6 +10,7 @@ There was no specific for forking the project or writing another SSH tarpit. I j
 ## Idea
 
 I like the idea of keeping automated bots stuck on your obscure setup and keeping them away from bothering others.  
+A tarpit sends the bots an endless SSH banner.  
 It was important for me to keep the Go binary minimal to ensure security and to keep the setup as easy to understand and basic as possible.  
 Also I wanted to create program with a funny name.
 
@@ -18,77 +19,73 @@ These attacks are usually [Brute-force attacks](https://en.wikipedia.org/wiki/Br
 If you keep a tarpit on port 22 and move your SSH somewhere else (e.g. change to an obscure port, setup a VPN and a local subnet to allow connects only from there), you can have a safe setup that annoys these automated bots.
 
 It is important to consider that a tarpit does not add any additional security.  
+This approach is just made to be annoying, if you want to make research about SSH attacks I recommend honeypots like [Cowrie](https://github.com/cowrie/cowrie).  
 If you keep your SSH port publicly available you should also use tools like [CrowdSec](https://www.crowdsec.net/) or [Fail2ban](https://www.fail2ban.org/wiki/index.php/Main_Page).
 The VPN approach and configuring your local firewall to only accept connections from certain IPs is probably the best way to secure your SSH.
 
 ## How should it be used
 
 FortreSSH was created with the thought of deploying it in Docker.  
+I like the ability of containers to isolate processes and [keeping them safe with SELinux](https://opensource.com/article/20/11/selinux-containers).
 The Dockerfile creates a minimal image with only FortreSSH running on port 2222.
 
-You can tell Docker to bind your port 22/tcp to the containers 2222 but I suggest to keep it on 2222 inside a Docker network and tell nftables (or your preferred solution) to use a dnat to route the traffic.
+Of course you could tell Docker to bind your port 22/tcp to the containers 2222 but I suggest to keep it on 2222 inside its own Docker network and tell nftables (or your preferred solution) to use a dnat to route the traffic.  
+Especially when using solutions like SELinux you should not mess with policies and should not use labeled ports like 22 for other purposes.
 
 ## Build/Usage
 
 ### Docker
 
-You can run with docker, the image uses the default port `2222` so when running the image, just map it across to `22`
+You can build the Docker image after cloning the repo.
 
-    docker run -d -p 22:2222 bentasker12/go_ssh_tarpit
+```
+git clone https://github.com/Proto1337/FortreSSH
+cd FortreSSH
+docker build --tag fortressh:latest
+```
 
-This will fetch it from [Docker Hub](https://hub.docker.com/r/bentasker12/go_ssh_tarpit)
+If you wish to run it directly you could use:
 
-#### Starting On Boot
+```
+docker run -p 2222:2222 fortressh
+```
 
-The easiest way to have the tarpit image start on boot is tell docker to ensure it's always restarted
+I only recommend this for debugging purposes. Creating the own docker subnet is a better approach.
 
-    docker run -d -p 22:2222 --restart always bentasker12/go_ssh_tarpit
+### Manual deployment (not recommended)
 
+Of course you can compile the binary directly on your machine using Go or gccgo.
 
-### Manual
+```
+go build fortressh.go
+```
 
-If you'd rather not use docker, you just need to build it with `Go`
+OR
 
-    go build ssh_tarpit.go
+```
+gccgo -o fortessh fortressh.go
+```
 
 And then run it
 
-    ./ssh_tarpit.go
+```
+./fortressh
+```
 
-Or, of course, you can use `go run`
+If you use this approach, you should consider that it defaults to port 2222.  
+You can change it using "--port" and set it to something else.  
+**DO NOT SET IT TO PORT 22 USING ROOT PRIVILEGES!!**
+If you really wish to not use Docker please still use the NAT approach!
 
-    go run ssh_tarpit.go
+## nftables configuration
 
-However, by default the script binds to port 2222 - this is so that it could easily run as a non-privileged user within the docker container. If you're running directly, you have 2 options
-
-* Edit the constant to bind to `22` and run as root (*very, very, very* bad idea)
-* Run as unprivileged user and use IPTables to NAT `22` to `2222`
-
-The latter can be achieved with
-
-    iptables -t nat -A PREROUTING -p tcp --dport 22 -j REDIRECT --to-port 2222
-
-
-### Example Raspberry Pi Deployment
-
-The following steps can be used to deploy onto a Raspberry Pi running Raspbian
-
-    curl -fsSL https://get.docker.com -o get-docker.sh
-    sudo sh get-docker.sh
-    sudo usermod -aG docker pi
-    logout
-    # log back in
-    docker run -d -p 2222:2222 --restart always bentasker12/go_ssh_tarpit:armv7
-    sudo iptables -t nat -A PREROUTING -p tcp --dport 22 -j REDIRECT --to-port 2222
-    sudo apt-get -y install iptables-persistent
-    sudo iptables-save > /etc/iptables/rules.v4
-
-You should be able to see the container running with `docker ls` and can use the name/ID from there to view logs with `docker logs`
-
-----
+### TODO / WIP
 
 ### Copyright
+
+FortreSSH (C) 2023 Umut Yilmaz.
 
 Golang SSH Tarpit is Copyright (C) 2021 B Tasker. All Rights Reserved. 
 
 Released Under [GNU GPL V3 License](http://www.gnu.org/licenses/gpl-3.0.txt).
+

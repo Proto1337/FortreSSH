@@ -79,13 +79,142 @@ If you really wish to not use Docker please still use the NAT approach!
 
 ## nftables configuration
 
-### TODO / WIP
+Alot of information about Docker subnets and nftables can be found in [this guide](https://github.com/alexandre-khoury/blog/tree/main/posts/docker-nftables).
+
+### Docker network
+
+It is important to edit `/etc/docker/daemon.json`.
+
+```
+{
+  "iptables" : false, // Disables iptables management
+  "bip": "10.1.1.1/24", // Default bridge network subnet
+                        // Must be a valid IP + subnet mask
+                        // See https://github.com/docker/for-mac/issues/218#issuecomment-386489719
+  "fixed-cidr": "10.1.1.0/25", // Subnet for static IPs in the default bridge network
+  "default-address-pools": [
+    {
+      "base":"10.2.0.0/16", // Available space for custom Docker networks
+      "size":24 // Size of a custom network
+    }
+  ]
+}
+```
+[source](https://github.com/alexandre-khoury/blog/tree/main/posts/docker-nftables#daemonjson)
+
+This way Docker stops messing with your firewall rules and you can start giving IPs out yourself.  
+This approach takes more effort but gives you more control.
+
+Now create your Docker network:
+
+```
+docker network create tarpit_subnet --subnet 10.2.0.0/24 -o com.docker.network.bridge.name=tarpit0
+```
+
+This creates a Docker network named "tarpit_subnet" with possible IPs 10.2.0.1 - 10.2.0.254.  
+This custom network can be comfortably used inside of docker-compose.yml files.
+
+For example:
+
+```
+version: "3"
+
+services:
+    fortressh:
+        image: fortressh
+        ports:
+            - "10.2.0.1:2222:2222"
+        networks:
+            tarpit_subnet:
+                ipv4_address: 10.2.0.2
+        restart: unless-stopped
+
+networks:
+    tarpit_subnet:
+        external: true
+```
+
+Starting the image then with `docker compose up (-d)` sets all the needed network stuff.
+
+### NAT
+
+[Here is more detailed information](https://github.com/alexandre-khoury/blog/tree/main/posts/docker-nftables#nftables-configuration).
+Also a lot of inspiration was taken [here](https://wiki.gentoo.org/wiki/Nftables/Examples#Typical_workstation_.28combined_IPv4_and_IPv6.29).
+
+```
+#!/sbin/nft -f
+
+define WAN_IFC = {YOUR WAN INTERFACE e.g. eth0, ens3, ...}
+define TARPIT_IFC = tarpit0
+define SERVER_IP = {YOUR PUBLIC SERVER IP}
+define TARPIT_IP = 10.2.0.2
+
+flush ruleset
+
+table inet filter {
+	chain prerouting {
+		type nat hook prerouting priority dstnat
+		policy accept
+		ct state invalid drop
+
+		# route to minecraft
+		ip daddr $SERVER_IP tcp dport { 22 } dnat to $TARPIT_IP:2222
+	}
+
+  	chain input {
+		type filter hook input priority 0; policy drop;
+		ct state invalid counter drop comment "early drop of invalid packets"
+		ct state {established, related} counter accept comment "accept all connections related to connections made by us"
+		iif lo accept comment "accept loopback"
+		iif != lo ip daddr 127.0.0.1/8 counter drop comment "drop connections to loopback not coming from loopback"
+		iif != lo ip6 daddr ::1/128 counter drop comment "drop connections to loopback not coming from loopback"
+		ip protocol icmp counter accept comment "accept all ICMP types"
+		ip6 nexthdr icmpv6 counter accept comment "accept all ICMP types"
+
+        # Allow outgoing from the Docket network
+        iifname $TARPIT_IFC accept
+
+    	counter comment "count dropped packets"
+	}
+
+	chain forward {
+		type filter hook forward priority 10; policy drop;
+		ct state vmap { established : accept, related : accept, invalid : drop }
+
+        # allow Docker Tarpit
+        ip daddr $TARPIT_IP tcp dport 2222 accept
+
+        iifname $TARPIT_IFC accept
+
+        counter comment "count dropped packets"
+    }
+
+	chain postrouting {
+		type nat hook postrouting priority srcnat
+		policy accept
+
+		# Modify Docker exiting traffic as coming from server IP
+		oifname $WAN_IFC iifname $TARPIT_IFC snat ip to $SERVER_IP
+    }
+
+	chain output {
+		type filter hook output priority 10; policy accept;
+		counter comment "count accepted packets"
+	}
+}
+```
+
+This is a pretty basic nftables config that would allow to route traffic from port 22/tcp to the Docker 2222/tcp.  
+You can load the nftables config with `nft -f /path/to/file`.  
+Remember to save! Also remember to open a port for a different SSH service or the VPN connection.
+
+-----
 
 ### Copyright
 
 FortreSSH (C) 2023 Umut Yilmaz.
 
-Golang SSH Tarpit is Copyright (C) 2021 B Tasker. All Rights Reserved. 
+Original code: Golang SSH Tarpit is Copyright (C) 2021 B Tasker. All Rights Reserved. 
 
 Released Under [GNU GPL V3 License](http://www.gnu.org/licenses/gpl-3.0.txt).
 

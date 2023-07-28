@@ -78,11 +78,11 @@ func setVariables() {
     /*
     * Set the values of the variables based on commandline flags
     */
-    flag.StringVar(&LISTEN_PORT, "port", "2222", "Port to listen on")
-    flag.IntVar(&MIN_SLEEP, "minsleep", 1, "Minimum time between iterations")
-    flag.IntVar(&MAX_SLEEP, "maxsleep", 5, "Maximum time between iterations")
-    flag.IntVar(&MIN_LENGTH, "minlength", 10, "Minimum length of responses")
-    flag.IntVar(&MAX_LENGTH, "maxlength", 120, "Maximum length of responses")
+    flag.StringVar(&LISTEN_PORT, "port", "2222", "Port to listen on.")
+    flag.IntVar(&MIN_SLEEP, "minsleep", 1, "Minimum time between iterations. Do not set it too high or the client will timeout, suggest < 30.")
+    flag.IntVar(&MAX_SLEEP, "maxsleep", 5, "Maximum time between iterations. Do not set it too high or the client will timeout, suggest < 30.")
+    flag.IntVar(&MIN_LENGTH, "minlength", 10, "Minimum length of responses. This must not be set higher than 253. The SSH specification says 255 max, including the CRLF.")
+    flag.IntVar(&MAX_LENGTH, "maxlength", 120, "Maximum length of responses. This must not be set higher than 253. The SSH specification says 255 max, including the CRLF.")
     flag.Parse()
 }
 

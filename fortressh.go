@@ -44,25 +44,30 @@ var (
 )
 
 func main() {
+    /**
+    * Start the listener on specified port.
+    * Accept incoming connections.
+    * Handle them in a goroutine.
+    */
+    // set the variables based on flags
+    // no flags -> default values
     setVariables()
     // Start listening on the specified port
     listener, err := net.Listen("tcp", ":"+LISTEN_PORT)
     if err != nil {
         panic(err)
     }
-
     // Close the listener when the app closes
     defer listener.Close()
     fmt.Println("Listening on port " + LISTEN_PORT)
-
-    // Start accepting connections
+    // Start accepting connections in an endless loop
+    // Print the incoming IP and send them into the goroutine
     for {
         conn, err := listener.Accept()
         if err != nil {
             // trap error and move onto a new connection
             continue
         }
-
         // Handle the connection in a new goroutine
         fmt.Println(time.Now().Format("2006/01/02-15:04:05"), conn.RemoteAddr().String(), "connected")
         go handleConnection(conn)
@@ -82,20 +87,19 @@ func setVariables() {
 }
 
 func handleConnection(conn net.Conn) {
-    // Handle the new connection, and write a long (and in fact, never-ending) banner
-
+    /**
+    * Handle the new connection, and write a long (and in fact, never-ending) banner.
+    */
     // Close the connection when this function ends
     defer conn.Close()
-
     // We're going to be generating psuedo-random numbers, so seed it with the time the connection opened
     start := time.Now().Unix()
     r := rand.New(rand.NewSource(start))
-
-    // Main loop - get a random string, write it, sleep then do it again
+    // Main loop
+    // Get a random string, write it, sleep then do it again
     for {
         // Generate random string and write it to the socket.
         _, err := conn.Write([]byte(genString(r.Intn(MAX_LENGTH-MIN_LENGTH)+MIN_LENGTH) + "\r\n"))
-
         // Now check the write worked - if the client went away we'll get an error
         // at that point, we should stop wasting resources and free up the FD
         if err != nil {
@@ -105,7 +109,6 @@ func handleConnection(conn net.Conn) {
             conn.Close()
             break
         }
-
         // Sleep for a period before sending the next
         // We vary the period a bit to tie the client up for varying amounts of time
         time.Sleep(time.Duration(r.Intn(MAX_SLEEP-MIN_SLEEP)+MIN_SLEEP) * time.Second)
@@ -113,10 +116,12 @@ func handleConnection(conn net.Conn) {
 }
 
 func genString(length int) string {
-    // Generate a psuedo-random string
-    // Keep out charset ascii - it is pretending to be a printable banner, after all
+    /**
+    * Generate a psuedo-random string
+    * Keep out charset ascii - it is pretending to be a printable banner, after all
+    */
     charSet := "abcdedfghijklmnopqrstABCDEDFGHIJKLMNOPQRSTUVWXYZ0123456789=.<>?!#@''"
-    // Generate the string
+    // Generate the string to send to the client
     var output strings.Builder
     for i := 0; i < length; i++ {
         randChar := charSet[rand.Intn(len(charSet))]

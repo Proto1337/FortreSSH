@@ -1,18 +1,32 @@
-Golang SSH Tarpit
+FortreSSH
 ===================
 
-A simple SSH tarpit written in Go, based on the ideas in [endlessh](https://nullprogram.com/blog/2019/03/22/).
+FortreSSH is a simple SSH tarpit written in Go.
+My main inspiration was [endlessh](https://nullprogram.com/blog/2019/03/22/).
+After searching around a bit I found [Golang SSH Tarpit](https://github.com/bentasker/Golang-SSH-Tarpit) and decided to fork it.
 
+There was no specific for forking the project or writing another SSH tarpit. I just wanted to practice coding a bit and kinda missed it after not doing it for a long time.
 
-## Background
+## Idea
 
-There wasn't really a good reason to write yet-another-tarpit other than that I felt like doing it.
+I like the idea of keeping automated bots stuck on your obscure setup and keeping them away from bothering others.  
+It was important for me to keep the Go binary minimal to ensure security and to keep the setup as easy to understand and basic as possible.  
+Also I wanted to create program with a funny name.
 
-I'd originally planned to do it in Python, but then changed my mind and figured I'd give Go a go instead.
+Automated bots scan random IPs on port 22 and try to log in with different credentials.  
+These attacks are usually [Brute-force attacks](https://en.wikipedia.org/wiki/Brute-force_attack) or [dictionary attacks](https://en.wikipedia.org/wiki/Dictionary_attack).  
+If you keep a tarpit on port 22 and move your SSH somewhere else (e.g. change to an obscure port, setup a VPN and a local subnet to allow connects only from there), you can have a safe setup that annoys these automated bots.
 
-The basic concept, is you run this tarpit on `TCP 22` (the default for SSH) in order to inconvenience bad bots and tie up their resources (rather than moving onto spamming other boxes) and run your actual SSH on another port.
+It is important to consider that a tarpit does not add any additional security.  
+If you keep your SSH port publicly available you should also use tools like [CrowdSec](https://www.crowdsec.net/) or [Fail2ban](https://www.fail2ban.org/wiki/index.php/Main_Page).
+The VPN approach and configuring your local firewall to only accept connections from certain IPs is probably the best way to secure your SSH.
 
-----
+## How should it be used
+
+FortreSSH was created with the thought of deploying it in Docker.  
+The Dockerfile creates a minimal image with only FortreSSH running on port 2222.
+
+You can tell Docker to bind your port 22/tcp to the containers 2222 but I suggest to keep it on 2222 inside a Docker network and tell nftables (or your preferred solution) to use a dnat to route the traffic.
 
 ## Build/Usage
 

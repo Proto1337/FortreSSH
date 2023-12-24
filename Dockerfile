@@ -13,6 +13,7 @@ RUN go build fortressh.go
 # Stage 2: Running
 # Run in minimal busybox environment
 FROM docker.io/library/busybox:musl
+ENV LANG=C.UTF-8
 WORKDIR /pit
 # Always use an unpriviliged user for your Docker stuff!
 RUN adduser -D appuser

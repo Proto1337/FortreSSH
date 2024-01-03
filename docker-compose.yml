@@ -1,0 +1,18 @@
+# This docker-compose is just an example.
+version: "3"
+
+services:
+  fortressh:
+    image: localhost/fortressh:latest
+    cap_drop:
+      - "ALL"
+    ports:
+      - "10.2.0.1:2222:2222"
+    networks:
+      tarpit_subnet:
+        ipv4_address: 10.2.0.2
+    restart: unless-stopped
+
+networks:
+  tarpit_subnet:
+    external: true

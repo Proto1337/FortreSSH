@@ -122,6 +122,8 @@ version: "3"
 services:
     fortressh:
         image: fortressh
+        cap_drop:
+          - "ALL"
         ports:
             - "10.2.0.1:2222:2222"
         networks:

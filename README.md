@@ -1,5 +1,8 @@
-FortreSSH
-===================
+<h1 align="center" style="border-bottom: none">
+    <a href="https://github.com/Proto1337/FortreSSH" target="_blank"><img alt="FortreSSH" style="width:384px;height:384px;" src="/logo.png"></a><br>FortreSSH
+</h1>
+
+---
 
 FortreSSH is a simple SSH tarpit written in Go.
 My main inspiration was [endlessh](https://nullprogram.com/blog/2019/03/22/).
